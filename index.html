@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Birthday Surprise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&family=Caveat:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: one full-screen stage, five scenes (lock, loading, envelope, letter, wish), one visible at a time. */
+:root{
+  --wine:#7a0f1f;      /* velvet background */
+  --wine-deep:#4a0812;
+  --paper:#f6ead2;     /* card paper */
+  --ink:#3b1a14;
+  --gold:#e8b94a;
+  --night:#0d0709;
+  --display:'Cormorant Garamond',Georgia,serif;
+  --hand:'Caveat','Segoe Script',cursive;
+  --body:'DM Sans',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--wine-deep);color:var(--paper);font-family:var(--body);overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+#stage{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 20%,var(--wine),var(--wine-deep));transition:background .8s}
+#stage.night{background:var(--night)}
+.scene{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.25rem;padding:4rem 16px 2rem;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .6s}
+.scene.on{opacity:1;pointer-events:auto}
+.gear{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px;z-index:30;width:40px;height:40px;border-radius:50%;border:1px solid #ffffff44;background:#00000033;font-size:18px;line-height:1}
+.eyebrow{font-size:.75rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin:0}
+h1,h2{font-family:var(--display);font-weight:700;margin:0;text-wrap:balance;line-height:1.05}
+
+/* photo slots */
+.slot{position:relative;background:#00000022;border:2px dashed #ffffff55;display:grid;place-items:center;overflow:hidden;cursor:pointer;color:#ffffffaa;font-size:.8rem;text-align:center;padding:.5rem}
+.slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.slot.has{border:0}
+.slot.has span{display:none}
+
+/* lock */
+.polaroid{background:#fbf6ea;padding:10px 10px 38px;width:min(220px,60vw);transform:rotate(-4deg);box-shadow:0 14px 30px #0008;color:var(--ink)}
+.polaroid .slot{aspect-ratio:1;border-color:#3b1a1455;color:#3b1a14aa}
+.polaroid p{font-family:var(--hand);font-size:1.4rem;margin:.4rem 0 0;text-align:center}
+.lock-title{font-family:var(--display);font-size:1.6rem;margin:0}
+.dots{display:flex;gap:.8rem;height:14px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--gold);transition:background .15s}
+.dots i.f{background:var(--gold)}
+.dots.bad{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.pad{display:grid;grid-template-columns:repeat(3,64px);gap:12px}
+.pad button{height:64px;border-radius:50%;border:1px solid #ffffff44;background:#ffffff14;font-size:1.4rem;font-weight:500}
+.pad button:active{background:#ffffff33}
+.hint{font-size:.85rem;color:#ffffffb0;margin:0}
+
+/* loading */
+.bar{width:min(260px,70vw);height:6px;background:#ffffff22;border-radius:6px;overflow:hidden}
+.bar b{display:block;height:100%;width:0;background:var(--gold)}
+.on .bar b{animation:fill 2.4s ease-in-out forwards}
+@keyframes fill{to{width:100%}}
+.load-txt{font-family:var(--display);font-style:italic;font-size:1.4rem;margin:0}
+
+/* envelope */
+.card{width:min(300px,82vw);background:var(--paper);color:var(--ink);padding:1.4rem 1.2rem 7.5rem;text-align:center;position:relative;box-shadow:0 18px 36px #0009;border-radius:4px}
+.card h2{font-size:2.3rem;color:var(--wine)}
+.card .to{font-family:var(--hand);font-size:1.7rem;margin:.4rem 0 0}
+.env{position:absolute;left:-1px;right:-1px;bottom:-1px;height:130px;background:linear-gradient(#a3182c,#7d1020);border-radius:0 0 4px 4px;clip-path:polygon(0 0,50% 52%,100% 0,100% 100%,0 100%)}
+.seal{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);width:54px;height:54px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#f5d27a,#b8862b);box-shadow:0 4px 10px #0007;font-size:1.4rem;color:#6b4a0c;animation:pulse 1.8s infinite}
+@keyframes pulse{50%{transform:translateX(-50%) scale(1.1)}}
+.tap{font-size:.85rem;color:#ffffffb0;margin:0}
+
+/* letter */
+.letter{width:min(680px,100%);display:grid;grid-template-columns:1.4fr 1fr;gap:16px;background:var(--paper);color:var(--ink);padding:1.2rem;border-radius:4px;box-shadow:0 18px 36px #0009}
+.letter .txt{min-width:0;font-family:var(--hand);font-size:1.45rem;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}
+.letter .txt h3{font-family:var(--display);font-size:1.9rem;margin:0 0 .4rem;color:var(--wine);white-space:normal}
+.pics{display:flex;flex-direction:column;gap:10px;min-width:0}
+.pics .slot{aspect-ratio:4/3;border-color:#3b1a1455;color:#3b1a14aa}
+@media(max-width:560px){.letter{grid-template-columns:1fr}.pics{flex-direction:row}.pics .slot{flex:1;aspect-ratio:1}}
+.btn{background:var(--gold);color:#3b1a14;border:0;border-radius:999px;padding:.8rem 1.6rem;font-weight:700;letter-spacing:.04em}
+.btn.ghost{background:transparent;color:var(--paper);border:1px solid #ffffff66}
+
+/* wish */
+.wishline{font-family:var(--display);font-style:italic;font-size:1.6rem;margin:0;text-align:center}
+.cake{position:relative;width:200px;height:200px;cursor:pointer;image-rendering:pixelated}
+.cake .tier{position:absolute;left:50%;transform:translateX(-50%);background:#f6e6b8;box-shadow:inset 0 -8px #e2c98a,inset 0 8px #fff7dd}
+.cake .t1{bottom:0;width:190px;height:60px}
+.cake .t2{bottom:60px;width:130px;height:46px}
+.cake .candle{position:absolute;bottom:106px;width:10px;height:34px;background:repeating-linear-gradient(#f6e6b8 0 6px,#e9b8c0 6px 12px)}
+.cake .c1{left:calc(50% - 40px)}.cake .c2{left:calc(50% - 5px)}.cake .c3{left:calc(50% + 30px)}
+.flame{position:absolute;bottom:140px;width:12px;height:18px;border-radius:50% 50% 50% 50%/65% 65% 35% 35%;background:radial-gradient(#fff6c0,#ffb02e 60%,#ff7a1a);animation:flick .25s infinite alternate;box-shadow:0 0 18px 6px #ffb02e66;transition:opacity .4s,transform .4s}
+.f1{left:calc(50% - 41px)}.f2{left:calc(50% - 6px)}.f3{left:calc(50% + 29px)}
+.out .flame{opacity:0;transform:translateY(-14px) scale(.4)}
+@keyframes flick{to{transform:translateY(-1px) scaleY(1.12)}}
+.banner{background:#c1182f;color:#fff;font-family:var(--display);font-weight:700;font-size:1.4rem;padding:.5rem 1.4rem;border-radius:3px;box-shadow:0 6px 16px #0008;transform:scaleX(0);transition:transform .6s .2s;transform-origin:left}
+.out ~ .banner,.banner.show{transform:scaleX(1)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:20}
+
+/* settings */
+#panel{position:fixed;inset:0;z-index:40;background:#000a;display:none;align-items:center;justify-content:center;padding:16px}
+#panel.on{display:flex}
+#panel form{background:#2a0a10;border:1px solid #ffffff33;border-radius:10px;padding:1.2rem;width:min(420px,100%);display:flex;flex-direction:column;gap:.8rem}
+#panel label{display:flex;flex-direction:column;gap:.3rem;font-size:.85rem;color:#ffffffcc}
+#panel input,#panel textarea{background:#ffffff12;border:1px solid #ffffff44;border-radius:6px;color:#fff;padding:.55rem .7rem;font:inherit}
+#panel textarea{min-height:140px;resize:vertical}
+#panel .row{display:flex;gap:.6rem;justify-content:flex-end}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+[hidden]{display:none!important}
+html{background:#4a0812}
+</style>
+</head>
+<body>
+<div id="stage">
+  <button class="gear" id="gear" aria-label="Edit name, passcode and message">&#9881;</button>
+
+  <section class="scene on" id="s-lock">
+    <div class="polaroid">
+      <div class="slot" data-slot="lock" tabindex="0" role="button" aria-label="Add a photo"><span>Tap to add a photo</span></div>
+      <p id="lock-cap">Happy Birthday!</p>
+    </div>
+    <h2 class="lock-title">Enter the passcode</h2>
+    <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+    <div class="pad" id="pad"></div>
+    <p class="hint" id="hint">Hint: the date you were born, day then month</p>
+  </section>
+
+  <section class="scene" id="s-load">
+    <p class="load-txt">Creating your birthday surprise&hellip;</p>
+    <div class="bar"><b></b></div>
+  </section>
+
+  <section class="scene" id="s-env">
+    <div class="card">
+      <p class="eyebrow" style="color:var(--wine)">13 October</p>
+      <h2>Happy Birthday!</h2>
+      <p class="to" id="to-name"></p>
+      <div class="env"></div>
+      <button class="seal" id="seal" aria-label="Open the card">&#10084;</button>
+    </div>
+    <p class="tap">Tap the seal to open</p>
+  </section>
+
+  <section class="scene" id="s-letter">
+    <div class="letter">
+      <div class="txt" id="letter-txt"></div>
+      <div class="pics">
+        <div class="slot" data-slot="p1" tabindex="0" role="button" aria-label="Add photo 1"><span>Add a photo</span></div>
+        <div class="slot" data-slot="p2" tabindex="0" role="button" aria-label="Add photo 2"><span>Add a photo</span></div>
+        <div class="slot" data-slot="p3" tabindex="0" role="button" aria-label="Add photo 3"><span>Add a photo</span></div>
+      </div>
+    </div>
+    <button class="btn" id="to-wish">Make a wish</button>
+  </section>
+
+  <section class="scene" id="s-wish">
+    <p class="wishline" id="wishline">Close your eyes and make a wish</p>
+    <div class="cake" id="cake" tabindex="0" role="button" aria-label="Blow out the candles">
+      <div class="tier t1"></div><div class="tier t2"></div>
+      <div class="candle c1"></div><div class="candle c2"></div><div class="candle c3"></div>
+      <div class="flame f1"></div><div class="flame f2"></div><div class="flame f3"></div>
+    </div>
+    <div class="banner" id="banner"></div>
+    <p class="tap" id="blowhint">Tap the cake to blow out the candles</p>
+    <button class="btn ghost" id="again" hidden>Watch again</button>
+  </section>
+</div>
+
+<canvas id="confetti"></canvas>
+<input type="file" accept="image/*" id="file" hidden>
+
+<div id="panel">
+  <form id="form">
+    <label for="in-name">Name<input id="in-name" maxlength="30"></label>
+    <label for="in-code">4-digit passcode<input id="in-code" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"></label>
+    <label for="in-msg">Message<textarea id="in-msg" maxlength="900"></textarea></label>
+    <div class="row"><button type="button" class="btn ghost" id="cancel">Cancel</button><button class="btn" type="submit">Save</button></div>
+  </form>
+</div>
+
+<script>
+(function(){
+  var DEFAULTS={
+    name:'Precious',
+    code:'1310',
+    msg:'Another year, another reason to celebrate you.\n\nI hope today is full of good food, loud laughter and people who love you. You have worked hard, grown a lot and made a lot of people proud, and I hope you let yourself feel that today.\n\nMay this new year bring you peace, good health, open doors and more joy than you can carry.\n\nHappy birthday!'
+  };
+  var S={name:DEFAULTS.name,code:DEFAULTS.code,msg:DEFAULTS.msg,photos:{}};
+  function load(){try{var j=JSON.parse(localStorage.getItem('bday')||'{}');['name','code','msg'].forEach(function(k){if(j[k])S[k]=j[k]});}catch(e){}
+    try{var p=JSON.parse(localStorage.getItem('bdayPhotos')||'{}');S.photos=p||{};}catch(e){}}
+  function save(){try{localStorage.setItem('bday',JSON.stringify({name:S.name,code:S.code,msg:S.msg}))}catch(e){}}
+  function savePhotos(){try{localStorage.setItem('bdayPhotos',JSON.stringify(S.photos))}catch(e){}}
+  load();
+
+  var $=function(id){return document.getElementById(id)};
+  var scenes=['s-lock','s-load','s-env','s-letter','s-wish'];
+  function show(id){
+    scenes.forEach(function(s){$(s).classList.toggle('on',s===id)});
+    $('stage').classList.toggle('night',id==='s-wish');
+  }
+
+  function render(){
+    $('to-name').textContent='For '+S.name;
+    $('lock-cap').textContent='Happy Birthday, '+S.name+'!';
+    var t=$('letter-txt');t.textContent='';
+    var h=document.createElement('h3');h.textContent='Dear '+S.name+',';t.appendChild(h);
+    t.appendChild(document.createTextNode(S.msg));
+    $('banner').textContent='Happy Birthday, '+S.name+'!';
+    document.querySelectorAll('.slot').forEach(function(sl){
+      var k=sl.dataset.slot,img=sl.querySelector('img');
+      if(S.photos[k]){
+        if(!img){img=document.createElement('img');img.alt='';sl.appendChild(img)}
+        img.src=S.photos[k];sl.classList.add('has');
+      }
+    });
+  }
+
+  /* keypad */
+  var entry='';
+  var pad=$('pad');
+  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(function(k){
+    var b=document.createElement('button');
+    if(k===''){b.style.visibility='hidden';b.tabIndex=-1}
+    b.type='button';b.textContent=k;b.setAttribute('aria-label',k==='⌫'?'Delete':k||'');
+    b.addEventListener('click',function(){press(k)});
+    pad.appendChild(b);
+  });
+  function press(k){
+    if(k==='⌫'){entry=entry.slice(0,-1)}
+    else if(k&&entry.length<4){entry+=k}
+    paint();
+    if(entry.length===4){
+      if(entry===S.code){setTimeout(function(){entry='';paint();startLoad()},250)}
+      else{var d=$('dots');d.classList.add('bad');$('hint').textContent='Not quite. Try again.';
+        setTimeout(function(){d.classList.remove('bad');entry='';paint()},450)}
+    }
+  }
+  function paint(){document.querySelectorAll('#dots i').forEach(function(d,i){d.classList.toggle('f',i<entry.length)})}
+  document.addEventListener('keydown',function(e){
+    if($('s-lock').classList.contains('on')&&!$('panel').classList.contains('on')){
+      if(/^[0-9]$/.test(e.key))press(e.key);else if(e.key==='Backspace')press('⌫');
+    }
+  });
+
+  function startLoad(){
+    show('s-load');
+    var b=$('s-load').querySelector('.bar b');b.style.animation='none';void b.offsetWidth;b.style.animation='';
+    setTimeout(function(){show('s-env')},2600);
+  }
+  $('seal').addEventListener('click',function(){show('s-letter')});
+  $('to-wish').addEventListener('click',function(){resetCake();show('s-wish')});
+
+  /* cake */
+  var blown=false;
+  function resetCake(){
+    blown=false;$('cake').classList.remove('out');$('banner').classList.remove('show');
+    $('again').hidden=true;$('blowhint').hidden=false;$('wishline').textContent='Close your eyes and make a wish';
+  }
+  function blow(){
+    if(blown)return;blown=true;
+    $('cake').classList.add('out');
+    setTimeout(function(){
+      $('wishline').textContent='Your wish is on its way.';
+      $('banner').classList.add('show');
+      $('blowhint').hidden=true;$('again').hidden=false;
+      confetti();
+    },500);
+  }
+  $('cake').addEventListener('click',blow);
+  $('cake').addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();blow()}});
+  $('again').addEventListener('click',resetCake);
+
+  /* confetti */
+  var cv=$('confetti'),cx=cv.getContext('2d'),parts=[],raf=0;
+  function fit(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio}
+  fit();addEventListener('resize',fit);
+  function confetti(){
+    var cols=['#e8b94a','#f6ead2','#ff5a6e','#ffffff','#f08a5d'];
+    var W=cv.width,H=cv.height;
+    for(var i=0;i<180;i++){
+      parts.push({x:W/2,y:H*0.55,vx:(Math.random()-.5)*16*devicePixelRatio,vy:-(6+Math.random()*14)*devicePixelRatio,
+        s:(4+Math.random()*6)*devicePixelRatio,c:cols[i%cols.length],r:Math.random()*6,vr:(Math.random()-.5)*.4,l:0});
+    }
+    if(!raf)tick();
+  }
+  function tick(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    parts.forEach(function(p){
+      p.vy+=.35*devicePixelRatio;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.l++;
+      cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.fillStyle=p.c;cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cx.restore();
+    });
+    parts=parts.filter(function(p){return p.y<cv.height+40});
+    if(parts.length){raf=requestAnimationFrame(tick)}else{raf=0;cx.clearRect(0,0,cv.width,cv.height)}
+  }
+
+  /* photos */
+  var target=null,fi=$('file');
+  document.querySelectorAll('.slot').forEach(function(sl){
+    function pick(){target=sl;fi.value='';fi.click()}
+    sl.addEventListener('click',pick);
+    sl.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}});
+  });
+  fi.addEventListener('change',function(){
+    var f=fi.files&&fi.files[0];if(!f||!target)return;
+    var k=target.dataset.slot,rd=new FileReader();
+    rd.onload=function(){
+      var im=new Image();
+      im.onload=function(){
+        var m=700,sc=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement('canvas');
+        c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        S.photos[k]=c.toDataURL('image/jpeg',.8);savePhotos();render();
+      };
+      im.src=rd.result;
+    };
+    rd.readAsDataURL(f);
+  });
+
+  /* settings */
+  $('gear').addEventListener('click',function(){
+    $('in-name').value=S.name;$('in-code').value=S.code;$('in-msg').value=S.msg;$('panel').classList.add('on');$('in-name').focus();
+  });
+  $('cancel').addEventListener('click',function(){$('panel').classList.remove('on')});
+  $('form').addEventListener('submit',function(e){
+    e.preventDefault();
+    var n=$('in-name').value.trim(),c=$('in-code').value.trim(),m=$('in-msg').value.trim();
+    if(n)S.name=n;if(/^[0-9]{4}$/.test(c))S.code=c;if(m)S.msg=m;
+    save();render();$('panel').classList.remove('on');
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
